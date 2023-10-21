@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, shrink-to-fit=0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>glsl-pipeline</title>
+  </head>
+  <body style="margin: 0">
+
+    <video id="video" style="display:none" autoplay playsinline></video>
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://unpkg.com/three@<version>/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@<version>/examples/jsm/"
+          }
+        }
+      </script>
+    <script type="module">
+
+    import { WebGLRenderer, PerspectiveCamera, Scene, BoxGeometry, ShaderMaterial, Mesh, Vector2, Vector3} from 'three';
+      import { resolveLygia } from 'resolve-lygia';
+      import { GlslPipeline } from './index.js';
+      import * as THREE from 'three';
+
+      let W = window,
+          D = document;
+
+      let width = W.innerWidth;
+      let height = W.innerHeight;
+      let pixelRatio = W.devicePixelRatio;
+
+      const renderer = new WebGLRenderer();
+      renderer.setPixelRatio(pixelRatio);
+      renderer.setSize(width, height);
+      D.body.appendChild(renderer.domElement);
+
+//       navigator.mediaDevices.enumerateDevices()
+//   .then(function(devices) {
+//     devices.forEach(function(device) {
+//       if(device.kind === 'videoinput') {
+//         console.log("Device ID:", device.deviceId);
+//         console.log("Device Label:", device.label);
+//       }
+//     });
+//   })
+//   .catch(function(err) {
+//     console.error("Error enumerating devices:", err);
+//   });
+        let video;
+        video = document.getElementById( 'video' );
+
+        const texture = new THREE.VideoTexture( video );
+        texture.colorSpace = THREE.SRGBColorSpace;
+        const material = new THREE.MeshBasicMaterial( { map: texture, depthWrite: false } );
+
+      // Camera access logic
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const specificDeviceId = "ddd5ae2f9f449238a36354a9472ff84c3515dcf8240385b33833a0ff8b47252c";
+        const constraints = {
+        video: {
+            width: 1280,
+            height: 720,
+            deviceId: specificDeviceId
+        }
+        };
+          navigator.mediaDevices.getUserMedia(constraints).then(function(stream) {
+              video.srcObject = stream;
+              video.play();
+          }).catch(function(error) {
+              console.error('Unable to access the camera/webcam.', error);
+          });
+      } else {
+          console.error('MediaDevices interface not available.');
+      }
+
+      const shader_frag = resolveLygia(/* glsl */`
+      uniform sampler2D   u_doubleBuffer0;
+      uniform sampler2D   u_video;
+      uniform vec2        u_resolution;
+      uniform float       u_time;
+
+      #include "lygia/space/ratio.glsl"
+      #include "lygia/color/palette/hue.glsl"
+      #include "lygia/draw/circle.glsl"
+
+      void main() {
+          vec3 color = vec3(0.0);
+          vec2 pixel = 1.0/u_resolution.xy;
+          vec2 st = gl_FragCoord.xy * pixel;
+          vec4 video = texture2D(u_video, st);
+
+      #ifdef DOUBLE_BUFFER_0
+          color = texture2D(u_doubleBuffer0, st).rgb * 0.998;
+
+          vec2 sst = ratio(st, u_resolution);
+          sst.xy += vec2(cos(u_time * 2.0), sin(u_time * 1.7)) * 0.35;
+        //   color.rgb += hue(fract(u_time * 0.1)) * circle(sst, 0.1) * 0.05;
+        //   Add video
+        video = texture2D(u_video, sst);
+          color += video.rgb * 0.065; // control here the intensity of the video and feedback
+        //   Subtract video a bit to avoid saturation
+          color -= video.rgb * 0.05;
+      #else
+          color += texture2D(u_doubleBuffer0, st).rgb;
+            color += video.rgb;
+      #endif
+
+          gl_FragColor = vec4(color, 1.0);
+      }`);
+    // //   const glsl_sandbox = new GlslPipeline(renderer);
+    // const shader_frag = resolveLygia(/* glsl */`
+    //   uniform sampler2D   u_doubleBuffer0;
+    //   uniform sampler2D   u_video;
+    //   uniform vec2        u_resolution;
+    //   uniform float       u_time;
+    //   varying vec2    v_texcoord;
+
+    //   #include "lygia/space/ratio.glsl"
+    //   #include "lygia/color/palette/hue.glsl"
+    //   #include "lygia/draw/circle.glsl"
+
+    //   void main() {
+    //     vec4 color = vec4(vec3(0.0), 1.0);
+    // vec2 pixel = 1.0/u_resolution.xy;
+    // vec2 st = gl_FragCoord.xy * pixel;
+    // vec2 uv = v_texcoord;
+
+    // color.rgb = vec3(st.x,st.y,abs(sin(u_time)));
+    // vec4 video = texture2D(u_video, uv);
+    // color = video;
+    // gl_FragColor = color;
+    //   }`);
+
+    const glsl_sandbox = new GlslPipeline(renderer, {
+    // Optional uniforms object to pass to the shader
+    u_color: { value: new Vector3(1.0, 0.0, 0.0) },
+    u_speed: { value: 0.5 },
+    u_video: { value: texture },
+    u_videoResolution: { value: new Vector2(1920, 1080) },
+    
+});
+      glsl_sandbox.load(shader_frag);
+
+      const mesh = new Mesh(new BoxGeometry(1, 1, 1), glsl_sandbox.material);
+      const scene = new Scene();
+      const cam = new PerspectiveCamera(45, width / height, 0.001, 200);
+      cam.position.z = 3;
+      scene.add(mesh);
+
+      const draw = () => {
+          glsl_sandbox.renderMain();
+          requestAnimationFrame(draw);
+      };
+
+      const resize = () => {
+          width = W.innerWidth;
+          height = W.innerHeight;
+          pixelRatio = W.devicePixelRatio;
+
+          renderer.setPixelRatio(pixelRatio);
+          renderer.setSize(width, height);
+
+          glsl_sandbox.setSize(width, height);
+      };
+
+      W.addEventListener("resize", resize);
+      resize();
+
+      draw();
+    </script>
+  </body>
+</html>
