@@ -13,22 +13,16 @@
           "imports": {
             "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
             "three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/"
-              
-              
           }
         }
       </script>
     <script type="module">
     
     import { WebGLRenderer, PerspectiveCamera, Scene, BoxGeometry, ShaderMaterial, Mesh, Vector2, Vector3} from 'three';
-    // import { resolveLygia } from 'resolve-lygia';
     import resolveLygia from "https://lygia.xyz/resolve.esm.js";
     import { GlslPipeline } from './index.js';
     import * as THREE from 'three';
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
-    // import * as THREE from 'three';
-    // import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
-
 
     // Fetch the shader code from file and then proceed
     fetch('examples/camera.frag')
@@ -78,19 +72,16 @@
 
     const glsl_sandbox = new GlslPipeline(renderer, {
     // Optional uniforms object to pass to the shader
-    u_color: { value: new Vector3(1.0, 0.0, 0.0) },
     u_radius: { value: 0.5 },
     u_video: { value: texture },
-    u_videoResolution: { value: new Vector2(1920, 1080) },
     
 });
       glsl_sandbox.load(shader_frag);
 
       // New code for GUI
       const gui = new GUI();
-      // const folder = gui.addFolder('Controls');
       gui.add(glsl_sandbox.uniforms.u_radius, 'value', 0, 1).name('Radius').listen();
-      // folder.open();
+
 
       const mesh = new Mesh(new BoxGeometry(1, 1, 1), glsl_sandbox.material);
       const scene = new Scene();
@@ -122,10 +113,3 @@
     </script>
   </body>
 </html>
-
-
-<!-- 
-  npm install -g ngrok
-  ngrok config add-authtoken 1bjFD3HZdKh9yORCwUdrgszGT9G_5diXvkptcFRmNpvYJCbxG
-  ngrok http --domain=solid-pika-specially.ngrok-free.app 5173
- -->

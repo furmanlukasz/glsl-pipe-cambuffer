@@ -27,20 +27,15 @@ void main() {
 
     vec2 sst = ratio(st, u_resolution);
     sst.xy += vec2(cos(u_time * 2.0), sin(u_time * 1.7)) * 0.35;
-//   color.rgb += hue(fract(u_time * 0.1)) * circle(sst, 0.1) * 0.05;
-//   Add video
+
     video = texture2D(u_video, sst);
-    // if (st.y < 0.5)
-    //     color += edgePrewitt(u_video, st, pixel * radius);
-    // else
+
     color += edgeSobel(u_video, st, pixel * u_radius);
 
-    // color += video.rgb * 0.065; // control here the intensity of the video and feedback
-//   Subtract video a bit to avoid saturation
+
     color -= video.rgb * 0.05;
 #else
     color += texture2D(u_doubleBuffer0, st).rgb;
-    // color += video.rgb;
 
 #endif
 
