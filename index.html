@@ -23,6 +23,7 @@
     import { GlslPipeline } from './index.js';
     import * as THREE from 'three';
     import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+    import Stats from 'three/addons/libs/stats.module.js';
 
     // Fetch the shader code from file and then proceed
     fetch('examples/shader.frag')
@@ -74,6 +75,7 @@
     // Optional uniforms object to pass to the shader
     u_radius: { value: 0.2 },
     u_video: { value: texture },
+    u_kernel_size: { value: 15 },
     
 });
       glsl_sandbox.load(shader_frag);
@@ -81,6 +83,10 @@
       // New code for GUI
       const gui = new GUI();
       gui.add(glsl_sandbox.uniforms.u_radius, 'value', 0, 1).name('Radius').listen();
+      gui.add(glsl_sandbox.uniforms.u_kernel_size, 'value', 0, 20).name('Kernel Size').listen();
+      // Add stats
+      const stats = new Stats();
+      D.body.appendChild(stats.dom);
 
 
       const mesh = new Mesh(new BoxGeometry(1, 1, 1), glsl_sandbox.material);
@@ -92,6 +98,7 @@
       const draw = () => {
           glsl_sandbox.renderMain();
           requestAnimationFrame(draw);
+          stats.update();
       };
 
       const resize = () => {
@@ -109,6 +116,7 @@
       resize();
 
       draw();
+      
     });
     </script>
   </body>
